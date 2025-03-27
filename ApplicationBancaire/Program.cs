@@ -1,15 +1,12 @@
-﻿// See https://aka.ms/new-console-template for more information
-//Console.WriteLine("Hello, World!");
-
-namespace MonApplicationCompteBancaire;
+﻿namespace MonApplicationCompteBancaire;
 
 using System;
 using System.Globalization;
 
 public class MesComptesBancaire
 {
-    private static decimal soldeCompteCourant = 100;
-    private static decimal soldeCompteEpargne = 200;
+    private static decimal soldeCompteCourant = 0;
+    private static decimal soldeCompteEpargne = 0;
 
     private static List<string> transactionsCompteCourant = new List<string>();
     private static List<string> transactionsCompteEpargne = new List<string>();
@@ -28,6 +25,7 @@ public class MesComptesBancaire
         AttendreToucheEntrer();
         LancerMenuPrincipal();
     }
+
 
     public class Soldes
     {
@@ -50,13 +48,17 @@ public class MesComptesBancaire
             }
             else
             {
+                Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine("Aucun fichier JSON de sauvegarde trouvé. Les soldes par défaut seront utilisés.");
+                Console.ResetColor();
             }
         }
         catch (Exception ex)
         {
+            Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine($"Erreur lors du chargement des soldes : {ex.Message}");
             Console.WriteLine("Les soldes par défaut seront utilisés.");
+            Console.ResetColor();
         }
     }
 
@@ -71,7 +73,10 @@ public class MesComptesBancaire
 
         string json = System.Text.Json.JsonSerializer.Serialize(soldes);
         File.WriteAllText(filePath, json);
+
+        Console.ForegroundColor = ConsoleColor.DarkGreen;
         Console.WriteLine("Les soldes ont été sauvegardés en JSON.");
+        Console.ResetColor();
     }
 
 
@@ -80,7 +85,9 @@ public class MesComptesBancaire
         Console.WriteLine("Appuyez sur 'Entrée' pour accéder au menu");
         while (Console.ReadKey(intercept: true).Key != ConsoleKey.Enter)
         {
+            Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine("\nCe n'est pas la touche Entrée, réessayez !");
+            Console.ResetColor();
         }
     }
 
@@ -105,9 +112,10 @@ public class MesComptesBancaire
             string? input = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(input))
             {
-                Console.WriteLine("************************************************");
-                Console.WriteLine(" ==> Aucune entrée détectée. Veuillez réessayer.");
-                Console.WriteLine("************************************************");
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine("Aucune entrée détectée. Veuillez réessayer.");
+                Console.ResetColor();
+                AttendreToucheEntrer();
 
                 continue;
             }
@@ -123,31 +131,58 @@ public class MesComptesBancaire
             }
             else
             {
-                Console.WriteLine("******************************************");
-                Console.WriteLine(" ==> Option invalide. Veuillez réessayer. ");
-                Console.WriteLine("******************************************");
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine("Option invalide. Veuillez réessayer. ");
+                Console.ResetColor();
+                AttendreToucheEntrer();
+
             }
         }
     }
 
     private static void AfficherMenu()
     {
-        Console.WriteLine(" \n\n==================== Vous êtes sur le menu de votre application bancaire ! ========================\n");
-        Console.WriteLine("Veuillez entrer le code correspondant au service et valider en appuyant sur 'entrer' pour y accéder.");
-        Console.WriteLine("(Par exemple taper 'I' et sur 'entrer' pour accéder à vos informations)\n");
-        Console.WriteLine("-------- Informations titulaire du compte --------");
+        Console.Clear(); // Efface l'écran pour un affichage plus propre
+
+        // Afficher un titre coloré
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("==================== Vous êtes sur le menu de votre application bancaire ! ========================\n");
+        Console.ResetColor();
+
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine("Veuillez entrer le code correspondant au service et valider avec 'Entrée' pour y accéder.");
+        Console.WriteLine("(Par exemple, taper 'I' et appuyer sur 'Entrée' pour accéder à vos informations)\n");
+        Console.ResetColor();
+
+        // Section Informations titulaire (en jaune par exemple)
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine("----- Informations sur le titulaire du compte ----");
+        Console.ResetColor();
         Console.WriteLine("[ I ] Consulter vos informations.\n");
+
+        // Compte Courant
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("----------------- Compte Courant -----------------");
+        Console.ResetColor();
         Console.WriteLine("[ CS ] Consulter le solde de votre compte courant.");
         Console.WriteLine("[ CD ] Déposer des fonds sur votre compte courant.");
         Console.WriteLine("[ CR ] Retirer des fonds sur votre compte courant. \n");
+
+        // Compte Epargne
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("----------------- Compte Epargne -----------------");
+        Console.ResetColor();
         Console.WriteLine("[ ES ] Consulter le solde de votre compte épargne.");
         Console.WriteLine("[ ED ] Déposer des fonds sur votre compte épargne.");
         Console.WriteLine("[ ER ] Retirer des fonds sur votre compte épargne.\n");
+
+        // Option de sortie en rouge
+        Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine("------------- Sortir de l'application ------------");
         Console.WriteLine("[ X ] Quitter l'application.\n");
+        Console.ResetColor();
     }
+
 
     private static decimal ConvertirMontant(string input)
     {
@@ -177,11 +212,15 @@ public class MesComptesBancaire
             }
             else if (montant > maxValue)
             {
+                Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine($"Veuillez entrer un montant inférieur ou égal à {maxValue:C}.\n");
+                Console.ResetColor();
             }
             else
             {
+                Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine("Entrée invalide. Veuillez réessayer.\n");
+                Console.ResetColor();
             }
         }
 
@@ -213,8 +252,9 @@ public class MesComptesBancaire
 
                 sw.WriteLine("\n"); // Ajoute un saut de ligne pour séparer les sessions
             }
-
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine($"Les transactions ont été sauvegardées dans le fichier : {filePath}");
+            Console.ResetColor();
 
             // Vider la liste après sauvegarde
             transactions.Clear();
@@ -222,15 +262,21 @@ public class MesComptesBancaire
         }
         catch (Exception ex)
         {
+            Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine($"Erreur lors de l'écriture des transactions dans le fichier {filePath} : " + ex.Message);
+            Console.ResetColor();
         }
     }
 
     // Méthodes d'action
     private static void VoirInformationsTitulaire()
     {
+        Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine("\n--- Informations sur le titulaire du compte. ---\n");
+        Console.ResetColor();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.WriteLine("Voici vos informations :\n");
+        Console.ResetColor();
         Console.WriteLine("Prénom : John\n");
         Console.WriteLine("Nom : Doe\n");
         Console.WriteLine("Numéro de compte : xxxx xxxx xxxx\n\n");
@@ -239,20 +285,33 @@ public class MesComptesBancaire
     }
     private static void ConsulterCompteCourant()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Consultation du solde du compte courant. ---\n");
+        Console.ResetColor();
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Le solde de votre compte courant est de {SoldeCompteCourant:C}. \n\n");
+        Console.ResetColor();
 
         AttendreToucheEntrer();
     }
 
     private static void DeposerCompteCourant()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Déposer des fonds sur le compte courant. ---\n");
+        Console.ResetColor();
+
         decimal montantChoisi = ObtenirMontant("Quel montant souhaitez-vous déposer ? (En chiffres)", 1000000);
 
-        Console.WriteLine($"La somme entrée est : {montantChoisi:C}");
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine($"La somme déposée est de: {montantChoisi:C}");
+        Console.ResetColor();
+
         SoldeCompteCourant += montantChoisi;
+
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Votre nouveau solde est de : {SoldeCompteCourant:C}\n");
+        Console.ResetColor();
 
         // Ajout de la transaction dans l'historique
         transactionsCompteCourant.Add(
@@ -264,12 +323,21 @@ public class MesComptesBancaire
 
     private static void RetirerCompteCourant()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Retirer des fonds du compte courant. ---\n");
+        Console.ResetColor();
+
         decimal montantChoisi = ObtenirMontant("Quel montant souhaitez-vous retirer ? (En chiffres)", SoldeCompteCourant);
 
-        Console.WriteLine($"La somme entrée est de : {montantChoisi:C}");
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine($"La somme retirée est de : {montantChoisi:C}");
+        Console.ResetColor();
+
         SoldeCompteCourant -= montantChoisi;
+
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Votre nouveau solde est de : {SoldeCompteCourant:C}\n");
+        Console.ResetColor();
 
         // Ajout de la transaction dans l'historique
         transactionsCompteCourant.Add(
@@ -281,8 +349,12 @@ public class MesComptesBancaire
 
     private static void ConsulterCompteEpargne()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Consultation du solde du compte épargne. ---\n");
+        Console.ResetColor();
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Le solde de votre compte épargne est de {SoldeCompteEpargne:C}.\n\n");
+        Console.ResetColor();
 
         AttendreToucheEntrer();
     }
@@ -290,12 +362,21 @@ public class MesComptesBancaire
 
     private static void DeposerCompteEpargne()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Déposer des fonds sur le compte épargne. ---\n");
+        Console.ResetColor();
+
         decimal montantChoisi = ObtenirMontant("Quel montant souhaitez-vous déposer ? (En chiffres)", 1000000);
 
-        Console.WriteLine($"La somme entrée est : {montantChoisi:C}");
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine($"La somme déposée est de : {montantChoisi:C}");
+        Console.ResetColor();
+
         SoldeCompteEpargne += montantChoisi;
+
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Votre nouveau solde est de : {SoldeCompteEpargne:C}\n");
+        Console.ResetColor();
         // Ajout de la transaction dans l'historique
         transactionsCompteEpargne.Add(
             $"[Dépôt] {DateTime.Now:G} : +{montantChoisi:C}. Nouveau solde : {soldeCompteEpargne:C}"
@@ -307,12 +388,21 @@ public class MesComptesBancaire
 
     private static void RetirerCompteEpargne()
     {
+        Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("\n--- Retirer des fonds du compte épargne. ---\n");
+        Console.ResetColor();
+
         decimal montantChoisi = ObtenirMontant("Quel montant souhaitez-vous retirer ? (En chiffres)", SoldeCompteEpargne);
 
-        Console.WriteLine($"La somme entrée est de : {montantChoisi:C}");
+        Console.ForegroundColor = ConsoleColor.Blue;
+        Console.WriteLine($"La somme retirée est de : {montantChoisi:C}");
+        Console.ResetColor();
+
         SoldeCompteEpargne -= montantChoisi;
+
+        Console.ForegroundColor = ConsoleColor.DarkBlue;
         Console.WriteLine($"Votre nouveau solde est de : {SoldeCompteEpargne:C}\n");
+        Console.ResetColor();
         // Ajout de la transaction dans l'historique
         transactionsCompteEpargne.Add(
             $"[Retrait] {DateTime.Now:G} : -{montantChoisi:C}. Nouveau solde : {soldeCompteEpargne:C}"
@@ -323,13 +413,15 @@ public class MesComptesBancaire
 
     private static void QuitterApplication()
     {
+        Console.ForegroundColor = ConsoleColor.DarkGreen;
         Console.WriteLine("Enregistrement des transactions...");
-
+        Console.ResetColor();
         Console.WriteLine("\nMerci d'avoir utilisé l'application. Au revoir !");
 
         SauvegarderSoldesEnJson();
         EcrireTransactions("compte_courant.txt", transactionsCompteCourant);
         EcrireTransactions("compte_epargne.txt", transactionsCompteEpargne);
+        Console.WriteLine("\n\n");
         Environment.Exit(0);
     }
 }
