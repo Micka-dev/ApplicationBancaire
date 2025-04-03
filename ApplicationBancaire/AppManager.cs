@@ -52,11 +52,31 @@ namespace ApplicationBancaire
             }
         }
 
+        // Méthode pour enregistrer une transaction
+        private static void AddTransaction(List<Transaction> transactions, string operationType, decimal montant, decimal nouveauSolde)
+        {
+            transactions.Add(new Transaction
+            {
+                Date = DateTime.Now,
+                Type = operationType,
+                Montant = montant,
+                NouveauSolde = nouveauSolde
+            });
+        }
+
         // Centraliser l'affichage d'erreurs en rouge
         private static void AfficherErreur(string message)
         {
             Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine(message);
+            Console.ResetColor();
+        }
+
+        // Méthode pour afficher un en-tête formaté
+        private static void DisplayHeader(string header)
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine(header + "\n");
             Console.ResetColor();
         }
 
@@ -212,27 +232,41 @@ namespace ApplicationBancaire
             Console.ResetColor();
 
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("----- Informations sur le titulaire -----");
+            Console.WriteLine("------------ Informations sur le titulaire -------------");
             Console.ResetColor();
             Console.WriteLine("[ I ] Consulter vos informations.");
             Console.WriteLine("[ MP ] Modifier votre mot de passe\n");
 
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine("----------------- Opérations Bancaires -----------------\n");
+            Console.ResetColor();
+
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("----------------- Compte Courant -----------------");
+            Console.WriteLine("----------- Compte Courant => Retraits/Dépôts ----------");
             Console.ResetColor();
             Console.WriteLine("[ CS ] Consulter le solde de votre compte courant.");
             Console.WriteLine("[ CD ] Déposer sur votre compte courant.");
             Console.WriteLine("[ CR ] Retirer du compte courant.\n");
 
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("----------------- Compte Epargne -----------------");
+            Console.WriteLine("----------- Compte Epargne => Retraits/Dépôts ----------");
             Console.ResetColor();
             Console.WriteLine("[ ES ] Consulter le solde de votre compte épargne.");
             Console.WriteLine("[ ED ] Déposer sur votre compte épargne.");
             Console.WriteLine("[ ER ] Retirer du compte épargne.\n");
 
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("----------------------- Virements ----------------------");
+            Console.ResetColor();
+            Console.WriteLine("[ VI ] Effectuer un virement interne.");
+            Console.WriteLine("[ VE ] Effectuer un virement externe.");
+
+            Console.ForegroundColor = ConsoleColor.Magenta;
+            Console.WriteLine("--------------------------------------------------------");
+            Console.ResetColor();
+
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("------------- Quitter l'application -------------");
+            Console.WriteLine("----------------- Quitter l'application ----------------");
             Console.WriteLine("[ X ] Quitter l'application.\n");
             Console.ResetColor();
         }
@@ -249,6 +283,7 @@ namespace ApplicationBancaire
                 { "ES", () => ConsulterSolde("compte épargne", currentUser.SoldeCompteEpargne, currentUser.TransactionsCompteEpargne) },
                 { "ED", DeposerCompteEpargne },
                 { "ER", RetirerCompteEpargne },
+                { "VI", VirementInterne },
                 { "X", QuitterApplication }
             };
 
@@ -285,6 +320,7 @@ namespace ApplicationBancaire
         // Méthode commune pour consulter un solde (compte courant ou épargne)
         private static void ConsulterSolde(string compte, decimal solde, List<Transaction> historique)
         {
+            Console.Clear();
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"\n--- Consultation du solde du {compte}. ---\n");
             Console.ResetColor();
@@ -471,6 +507,7 @@ namespace ApplicationBancaire
 
         private static void AfficherInformationsTitulaire()
         {
+            Console.Clear();
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\n--- Informations sur le titulaire du compte. ---\n");
             Console.ResetColor();
@@ -489,6 +526,7 @@ namespace ApplicationBancaire
         // Opérations sur le compte courant
         private static void DeposerCompteCourant()
         {
+            Console.Clear();
             TraiterOperation(
                 "Dépôt",
                 "compte courant",
@@ -502,6 +540,7 @@ namespace ApplicationBancaire
 
         private static void RetirerCompteCourant()
         {
+            Console.Clear();
             TraiterOperation(
                 "Retrait",
                 "compte courant",
@@ -516,6 +555,7 @@ namespace ApplicationBancaire
         // Opérations sur le compte épargne
         private static void DeposerCompteEpargne()
         {
+            Console.Clear();
             TraiterOperation(
                 "Dépôt",
                 "compte épargne",
@@ -529,6 +569,7 @@ namespace ApplicationBancaire
 
         private static void RetirerCompteEpargne()
         {
+            Console.Clear();
             TraiterOperation(
                 "Retrait",
                 "compte épargne",
@@ -538,6 +579,58 @@ namespace ApplicationBancaire
                 () => currentUser.SoldeCompteEpargne,
                 currentUser.TransactionsCompteEpargne
             );
+        }
+
+        // Opérations de virement interne
+        private static void VirementInterne()
+        {
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("--- Virement Interne ---\n");
+            Console.ResetColor();
+
+            Console.WriteLine("Choisissez votre virement interne :");
+            Console.WriteLine("[1] Virement du compte courant vers le compte épargne");
+            Console.WriteLine("[2] Virement du compte épargne vers le compte courant\n");
+
+            string choix;
+            do
+            {
+                choix = LireEntreeNonVide("Quel est votre choix : ");
+                if (choix != "1" && choix != "2")
+                {
+                    AfficherErreur("Choix invalide. Veuillez réessayer.\n");
+                }
+            }
+            while (choix != "1" && choix != "2");
+
+            decimal montant = 0;
+            if (choix == "1")
+            {
+                montant = ObtenirMontant("\nEntrez le montant à transférer depuis le compte courant : ", currentUser.SoldeCompteCourant);
+                currentUser.SoldeCompteCourant -= montant;
+                currentUser.SoldeCompteEpargne += montant;
+
+                // Enregistrer les transactions pour le compte courant et le compte épargne
+                AddTransaction(currentUser.TransactionsCompteCourant, "Virement sortant (vers le compte épargne)", montant, currentUser.SoldeCompteCourant);
+                AddTransaction(currentUser.TransactionsCompteEpargne, "Virement entrant (depuis le compte courant)", montant, currentUser.SoldeCompteEpargne);
+            }
+            else // choix == "2"
+            {
+                montant = ObtenirMontant("\nEntrez le montant à transférer depuis le compte épargne : ", currentUser.SoldeCompteEpargne);
+                currentUser.SoldeCompteEpargne -= montant;
+                currentUser.SoldeCompteCourant += montant;
+
+                AddTransaction(currentUser.TransactionsCompteEpargne, "Virement sortant (vers le compte courant)", montant, currentUser.SoldeCompteEpargne);
+                AddTransaction(currentUser.TransactionsCompteCourant, "Virement entrant (depuis le compte épargne)", montant, currentUser.SoldeCompteCourant);
+            }
+
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine($"\nVirement interne de {montant:C} réalisé avec succès !\n");
+            Console.ResetColor();
+            Console.WriteLine($"Nouveau solde du compte courant : {currentUser.SoldeCompteCourant}");
+            Console.WriteLine($"Nouveau solde du compte epargne : {currentUser.SoldeCompteEpargne}\n");
+            AttendreToucheEntrer();
         }
         #endregion
 
