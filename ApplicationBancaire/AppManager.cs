@@ -214,7 +214,8 @@ namespace ApplicationBancaire
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("----- Informations sur le titulaire -----");
             Console.ResetColor();
-            Console.WriteLine("[ I ] Consulter vos informations.\n");
+            Console.WriteLine("[ I ] Consulter vos informations.");
+            Console.WriteLine("[ MP ] Modifier votre mot de passe\n");
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("----------------- Compte Courant -----------------");
@@ -241,6 +242,7 @@ namespace ApplicationBancaire
             var options = new Dictionary<string, Action>
             {
                 { "I", AfficherInformationsTitulaire },
+                { "MP", ModifierMotDePasse },
                 { "CS", () => ConsulterSolde("compte courant", currentUser.SoldeCompteCourant, currentUser.TransactionsCompteCourant) },
                 { "CD", DeposerCompteCourant },
                 { "CR", RetirerCompteCourant },
@@ -254,7 +256,6 @@ namespace ApplicationBancaire
             {
                 AfficherMenu();
                 Console.Write("\nEntrez votre choix : ");
-                //**************** ???? **************
                 string input = Console.ReadLine() ?? "";
                 if (string.IsNullOrWhiteSpace(input))
                 {
@@ -304,6 +305,44 @@ namespace ApplicationBancaire
                 Console.WriteLine();
             }
 
+            AttendreToucheEntrer();
+        }
+        #endregion
+
+        #region Modification du mot de passe
+
+        private static void ModifierMotDePasse()
+        {
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("--- Modification du Mot de Passe ---\n");
+            Console.ResetColor();
+
+            // Vérification du mot de passe actuel.
+            string actuel = LireEntreeNonVide("Entrez votre mot de passe actuel : ");
+            if (actuel != currentUser.MotDePasse)
+            {
+                AfficherErreur("Mot de passe actuel incorrect.");
+                AttendreToucheEntrer();
+                return;
+            }
+
+            // Saisie du nouveau mot de passe avec confirmation.
+            string nouveau = LireEntreeNonVide("Entrez votre nouveau mot de passe : ");
+            string confirmation = LireEntreeNonVide("Confirmez votre nouveau mot de passe : ");
+            if (nouveau != confirmation)
+            {
+                AfficherErreur("Les deux saisies ne correspondent pas.");
+                AttendreToucheEntrer();
+                return;
+            }
+
+            currentUser.MotDePasse = nouveau;
+            SauvegarderTitulairesEnJson();
+
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine("Mot de passe modifié avec succès !");
+            Console.ResetColor();
             AttendreToucheEntrer();
         }
         #endregion
