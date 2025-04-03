@@ -1,0 +1,42 @@
+﻿[
+  {
+    "Identifiant": "user1",
+    "MotDePasse": "1",
+    "Prenom": "Alice",
+    "Nom": "Martin",
+    "NumeroCompte": "1234 5678 9012",
+    "SoldeCompteCourant": 1500.0,
+    "SoldeCompteEpargne": 3000.0,
+    "TransactionsCompteCourant": [
+    ],
+    "TransactionsCompteEpargne": [
+    ]
+  },
+  {
+    "Identifiant": "user2",
+    "MotDePasse": "2",
+    "Prenom": "Bob",
+    "Nom": "Dupont",
+    "NumeroCompte": "9876 5432 1098",
+    "SoldeCompteCourant": 2500.0,
+    "SoldeCompteEpargne": 1200.0,
+    "TransactionsCompteCourant": [
+    ],
+    "TransactionsCompteEpargne": [
+    ]
+  },
+  {
+    "Identifiant": "user3",
+    "MotDePasse": "3",
+    "Prenom": "Bob",
+    "Nom": "Dupont",
+    "NumeroCompte": "9876 5432 1098",
+    "SoldeCompteCourant": 2500.0,
+    "SoldeCompteEpargne": 1200.0,
+    "TransactionsCompteCourant": [
+    ],
+    "TransactionsCompteEpargne": [
+    ]
+  }
+
+]
