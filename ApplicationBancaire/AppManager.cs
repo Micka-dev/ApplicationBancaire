@@ -39,16 +39,162 @@ namespace ApplicationBancaire
 
         #region Méthodes Utilitaires communes
 
-        // Centraliser la lecture d'une entrée utilisateur non vide
-        private static string LireEntreeNonVide(string invite)
+        // Centraliser la lecture d'une entrée utilisateur non vide (sans option quitter)
+        //private static string LireEntreeNonVide(string invite)
+        //{
+        //    while (true)
+        //    {
+        //        Console.Write(invite);
+        //        string? input = Console.ReadLine();
+        //        if (!string.IsNullOrWhiteSpace(input))
+        //            return input.Trim();
+        //        AfficherErreur("Entrée invalide. Veuillez réessayer.\n");
+        //    }
+        //}
+
+        // Centraliser la lecture d'une entrée utilisateur non vide avec OPTION QUITTER
+        private static SaisieResultat LireEntreeAvecOptionQuitter(string message, string contexte)
         {
             while (true)
             {
-                Console.Write(invite);
-                string? input = Console.ReadLine();
-                if (!string.IsNullOrWhiteSpace(input))
-                    return input.Trim();
-                AfficherErreur("Entrée invalide. Veuillez réessayer.\n");
+                AfficherConsigneQuitter(contexte);
+                Console.Write(message);
+                string entree = Console.ReadLine()?.Trim() ?? "";
+
+                if (entree.ToUpper() == "Q") // L'utilisateur souhaite abandonner
+                {
+                    Console.WriteLine($"Abandon en cours... {contexte}");
+                    return new SaisieResultat
+                    {
+                        Abandon = true,
+                        Message = "L'utilisateur a choisi d'abandonner."
+                    };
+                }
+
+                if (!string.IsNullOrWhiteSpace(entree)) // Une saisie valide a été réalisée
+                {
+                    return new SaisieResultat
+                    {
+                        Abandon = false,
+                        Valeur = entree,
+                        Message = "Saisie valide."
+                    };
+                }
+
+                // Afficher une erreur si la saisie est vide
+                AfficherErreur("Saisie invalide. Veuillez réessayer.");
+            }
+        }
+
+        // Méthode de validation de saisie (nom, prénom, IBAN)
+        private static bool ValiderNomPrenom(string nomOuPrenom)
+        {
+            return System.Text.RegularExpressions.Regex.IsMatch(nomOuPrenom, @"^[A-Za-zÀ-ÖØ-öø-ÿ\s'-]+$");
+        }
+
+        private static bool ValiderIban(string iban)
+        {
+            return System.Text.RegularExpressions.Regex.IsMatch(iban, @"^[A-Z]{2}\d{2}[A-Z0-9]{23}$");
+        }
+
+        // Méthode pour reformater l'iban
+        private static string ReformaterIban(string iban)
+        {
+            // Supprime tous les espaces ou caractères inutiles
+            string ibanNettoye = NormaliserIbanPourRecherche(iban);
+
+            // Ajoute des espaces tous les 4 caractères pour formater l'IBAN
+            return string.Join(" ", Enumerable.Range(0, ibanNettoye.Length / 4 + (ibanNettoye.Length % 4 > 0 ? 1 : 0))
+                                           .Select(i => ibanNettoye.Substring(i * 4, Math.Min(4, ibanNettoye.Length - i * 4))));
+        }
+
+        private static string NormaliserIbanPourRecherche(string iban)
+        {
+            // Supprime les espaces pour des comparaisons standarisées
+            return iban.Replace(" ", "").Trim();
+        }
+
+        // Méthode pour enregistrer un nouveau bénéficiaire
+        private static Beneficiaire? EnregistrerNouveauBeneficiaire()
+        {
+            string nomBenef;
+            do
+            {
+                SaisieResultat resultatNom = LireEntreeAvecOptionQuitter("Entrez le nom du bénéficiaire : ", "revenir au menu principal.");
+                if (resultatNom.Abandon) return null; // L'utilisateur a choisi de quitter
+                nomBenef = resultatNom.Valeur!;
+
+                if (!ValiderNomPrenom(nomBenef))
+                {
+                    AfficherErreur("Nom invalide. Assurez-vous de n'utiliser que des lettres, espaces ou apostrophes.");
+
+                }
+            }
+            while (!ValiderNomPrenom(nomBenef));
+
+            string prenomBenef;
+            do
+            {
+                SaisieResultat resultatPrenom = LireEntreeAvecOptionQuitter("Entrez le prénom du bénéficiaire : ", "revenir au menu principal.");
+                if (resultatPrenom.Abandon) return null;
+                prenomBenef = resultatPrenom.Valeur!;
+
+                if (!ValiderNomPrenom(prenomBenef))
+                {
+                    AfficherErreur("Prénom invalide. Assurez-vous de n'utiliser que des lettres, espaces ou apostrophes.");
+                }
+            }
+            while (!ValiderNomPrenom(prenomBenef));
+
+            string ibanBenef;
+            do
+            {
+                SaisieResultat resultatIban = LireEntreeAvecOptionQuitter("Entrez l'IBAN du bénéficiaire : ", "revenir au menu principal.");
+                if (resultatIban.Abandon) return null;
+
+                ibanBenef = resultatIban.Valeur!;
+
+                //Normaliser l'IBAN pour comparaison ou validation
+                string ibanNormalise = NormaliserIbanPourRecherche(ibanBenef);
+
+                if (!ValiderIban(ibanNormalise))
+                {
+                    AfficherErreur("IBAN invalide. Assurez-vous de fournir un IBAN correct au format standard (ex : FR76...).");
+                }
+            }
+            while (!ValiderIban(NormaliserIbanPourRecherche(ibanBenef)));
+
+            // Vérifie que l'utilisateur ne s'ajoute pas lui-même
+            if (currentUser.Nom.Equals(nomBenef, StringComparison.OrdinalIgnoreCase) &&
+                    currentUser.Prenom.Equals(prenomBenef, StringComparison.OrdinalIgnoreCase))
+            {
+                AfficherErreur("Vous ne pouvez pas vous enregistrer vous-même comme bénéficiaire.");
+                return null;
+            }
+
+            // Recherche du titulaire correspondant à l'IBAN
+            Titulaire? benefTitulaire = titulaires.FirstOrDefault(t => NormaliserIbanPourRecherche(t.Iban) == NormaliserIbanPourRecherche(ibanBenef)); // Comparaison normalisée
+
+            if (benefTitulaire != null)
+            {
+                return new Beneficiaire
+                {
+                    Identifiant = benefTitulaire.Identifiant,
+                    Nom = benefTitulaire.Nom,
+                    Prenom = benefTitulaire.Prenom,
+                    Iban = ReformaterIban(benefTitulaire.Iban),
+                    NumeroCompte = benefTitulaire.NumeroCompte
+                };
+            }
+            else
+            {
+                return new Beneficiaire
+                {
+                    Nom = nomBenef,
+                    Prenom = prenomBenef,
+                    Iban = ibanBenef,
+                    NumeroCompte = ""
+                };
             }
         }
 
@@ -72,13 +218,21 @@ namespace ApplicationBancaire
             Console.ResetColor();
         }
 
-        // Méthode pour afficher un en-tête formaté
-        private static void DisplayHeader(string header)
+        // Afficher message pour abandonner
+        private static void AfficherConsigneQuitter(string contexte)
         {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine(header + "\n");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"Note : Vous pouvez appuyer sur 'Q' pour abandonner et {contexte}.\n");
             Console.ResetColor();
         }
+
+        // Méthode pour afficher un en-tête formaté
+        //private static void DisplayHeader(string header)
+        //{
+        //    Console.ForegroundColor = ConsoleColor.Cyan;
+        //    Console.WriteLine(header + "\n");
+        //    Console.ResetColor();
+        //}
 
         // Méthode d'attente pour que l'utilisateur lise les affichages
         private static void AttendreToucheEntrer()
@@ -189,7 +343,12 @@ namespace ApplicationBancaire
 
             while (utilisateurTrouve == null)
             {
-                string identifiantSaisi = LireEntreeNonVide("Entrez votre identifiant : ");
+                SaisieResultat resultat = LireEntreeAvecOptionQuitter("Entrez votre identifiant : ", "quitter l'application.");
+                if (resultat.Abandon)
+                {
+                    Environment.Exit(0);
+                }
+                string identifiantSaisi = resultat.Valeur!;
 
                 utilisateurTrouve = titulaires.FirstOrDefault(t => t.Identifiant == identifiantSaisi);
                 if (utilisateurTrouve == null)
@@ -204,7 +363,9 @@ namespace ApplicationBancaire
         // Vérification du mot de passe pour l'utilisateur
         private static bool AuthentifierMotDePasse(Titulaire utilisateur)
         {
-            string motDePasseSaisi = LireEntreeNonVide("Entrez votre mot de passe : ");
+            SaisieResultat resultat = LireEntreeAvecOptionQuitter("Entrez votre mot de passe : ", "quitter l'application.");
+            if (resultat.Abandon) Environment.Exit(0);
+            string motDePasseSaisi = resultat.Valeur!;
 
             if (utilisateur.MotDePasse == motDePasseSaisi)
             {
@@ -284,6 +445,7 @@ namespace ApplicationBancaire
                 { "ED", DeposerCompteEpargne },
                 { "ER", RetirerCompteEpargne },
                 { "VI", VirementInterne },
+                { "VE", VirementExterne },
                 { "X", QuitterApplication }
             };
 
@@ -329,19 +491,27 @@ namespace ApplicationBancaire
             Console.WriteLine($"Le solde de votre {compte.ToLower()} est de {solde:C}.\n");
             Console.ResetColor();
 
-            Console.WriteLine("Voulez-vous afficher l'historique des transactions ? (O/N)");
-            string reponse = Console.ReadLine() ?? "";
-            if (reponse.Trim().ToUpper() == "O")
+            do
             {
-                Console.WriteLine($"\nHistorique des transactions pour le {compte} (du plus récent au plus ancien):\n");
-                foreach (var transaction in historique.AsEnumerable().Reverse())
-                {
-                    Console.WriteLine(transaction.ToString());
-                }
-                Console.WriteLine();
-            }
+                SaisieResultat resultatHistorique = LireEntreeAvecOptionQuitter("Voulez-vous afficher l'historique des transactions ? (O/N) : ", "revenir au menu principal.");
+                if (resultatHistorique.Abandon) return; // Quitte immédiatement et retourne au menu principal
 
-            AttendreToucheEntrer();
+                if (resultatHistorique.Valeur?.Trim().ToUpper() == "N") return;
+
+                if (resultatHistorique.Valeur?.Trim().ToUpper() == "O")
+                {
+                    Console.WriteLine($"\nHistorique des transactions pour le {compte} (du plus récent au plus ancien):\n");
+                    foreach (var transaction in historique.AsEnumerable().Reverse())
+                    {
+                        Console.WriteLine(transaction.ToString());
+                    }
+                    Console.WriteLine("\n\n");
+                    AttendreToucheEntrer();
+                    return;
+                }
+                else { AfficherErreur("Saisie incorrecte. Veuillez réessayer !"); }
+            } while (true);
+
         }
         #endregion
 
@@ -355,7 +525,10 @@ namespace ApplicationBancaire
             Console.ResetColor();
 
             // Vérification du mot de passe actuel.
-            string actuel = LireEntreeNonVide("Entrez votre mot de passe actuel : ");
+            SaisieResultat resultatActuel = LireEntreeAvecOptionQuitter("Entrez votre mot de passe actuel : ", "revenir au menu principal.");
+            if (resultatActuel.Abandon) return;
+            string actuel = resultatActuel.Valeur!;
+
             if (actuel != currentUser.MotDePasse)
             {
                 AfficherErreur("Mot de passe actuel incorrect.");
@@ -364,8 +537,14 @@ namespace ApplicationBancaire
             }
 
             // Saisie du nouveau mot de passe avec confirmation.
-            string nouveau = LireEntreeNonVide("Entrez votre nouveau mot de passe : ");
-            string confirmation = LireEntreeNonVide("Confirmez votre nouveau mot de passe : ");
+            SaisieResultat resultatNouveau = LireEntreeAvecOptionQuitter("Entrez votre nouveau mot de passe : ", "revenir au menu principal.");
+            if (resultatNouveau.Abandon) return;
+            string nouveau = resultatNouveau.Valeur!;
+
+            SaisieResultat resultatConfirmation = LireEntreeAvecOptionQuitter("Confirmez votre nouveau mot de passe : ", "revenir au menu principal.");
+            if (resultatConfirmation.Abandon) return;
+            string confirmation = resultatConfirmation.Valeur!;
+
             if (nouveau != confirmation)
             {
                 AfficherErreur("Les deux saisies ne correspondent pas.");
@@ -385,45 +564,43 @@ namespace ApplicationBancaire
 
         #region Gestion des Montants
 
-        // Conversion d'une chaîne en montant (en tenant compte des formats français)
-        private static decimal ConvertirMontant(string input)
+        private static MontantResultat ObtenirMontant(string message, decimal maxValue)
         {
-            if (decimal.TryParse(input, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out decimal nombre) ||
-                decimal.TryParse(input, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out nombre))
+            while (true)
             {
-                return nombre;
-            }
-            return -1;
-        }
-
-        // Lecture et validation d'un montant
-        private static decimal ObtenirMontant(string message, decimal maxValue)
-        {
-            decimal montant = 0;
-            bool montantValide = false;
-
-            while (!montantValide)
-            {
-                Console.WriteLine(message);
-                string input = LireEntreeNonVide(""); ;
-                montant = ConvertirMontant(input);
-
-                if (montant > 0 && montant <= maxValue)
+                // ICI METHODE POUR QUITTER : Saisie avec possibilité d'abandon
+                SaisieResultat res = LireEntreeAvecOptionQuitter(message, "annuler l'opération et revenir au menu principal.");
+                if (res.Abandon)
                 {
-                    montantValide = true;
+                    return new MontantResultat { Abandon = true }; // L'utilisateur a choisi d'abandonner
                 }
-                else if (montant > maxValue)
+
+                string input = res.Valeur!;
+                // Conversion d'une chaîne en montant (en tenant compte du format français et des autres)
+                if (decimal.TryParse(input, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out decimal montant) ||
+                    decimal.TryParse(input, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out montant))
                 {
-                    AfficherErreur($"Veuillez entrer un montant inférieur ou égal à {maxValue:C}.\n");
+                    if (montant > 0 && montant <= maxValue)
+                    {
+                        return new MontantResultat { Abandon = false, Montant = montant }; // Montant valide
+                    }
+
+                    if (montant > maxValue)
+                    {
+                        AfficherErreur($"Veuillez entrer un montant inférieur ou égal à {maxValue:C}.\n");
+                    }
+                    else
+                    {
+                        AfficherErreur("Le montant doit être supérieur à 0.\n");
+                    }
                 }
                 else
                 {
                     AfficherErreur("Entrée invalide. Veuillez réessayer.\n");
                 }
             }
-
-            return montant;
         }
+
         #endregion
 
         #region Générateurs d'Affichage pour Opérations bancaires
@@ -478,8 +655,10 @@ namespace ApplicationBancaire
             GenererAffichageTitreTransaction(compte, typeOperation)();
 
             // Lecture et validation du montant
-            decimal montant = ObtenirMontant(message, maxValue);
+            MontantResultat resultatMontant = ObtenirMontant(message, maxValue);
+            if (resultatMontant.Abandon) return; // Quitte immédiatement et retourne au menu principal
 
+            decimal montant = resultatMontant.Montant!.Value; // Assuré non nul car Abandon = false
             GenererAffichageMontantOperation(typeOperation, montant)();
 
             // Mise à jour du solde via le délégué
@@ -593,31 +772,36 @@ namespace ApplicationBancaire
             Console.WriteLine("[1] Virement du compte courant vers le compte épargne");
             Console.WriteLine("[2] Virement du compte épargne vers le compte courant\n");
 
-            string choix;
+            string? choix = null;
             do
             {
-                choix = LireEntreeNonVide("Quel est votre choix : ");
+                SaisieResultat resultatChoix = LireEntreeAvecOptionQuitter("Quel est votre choix : ", "revenir au menu principal.");
+                if (resultatChoix.Abandon) return; // Quitte immédiatement
+                choix = resultatChoix.Valeur;
+
                 if (choix != "1" && choix != "2")
                 {
                     AfficherErreur("Choix invalide. Veuillez réessayer.\n");
                 }
-            }
-            while (choix != "1" && choix != "2");
+            } while (choix != "1" && choix != "2");
 
-            decimal montant = 0;
+            MontantResultat resultatMontant = choix == "1"
+                ? ObtenirMontant("\nEntrez le montant à transférer depuis le compte courant : ", currentUser.SoldeCompteCourant)
+                : ObtenirMontant("\nEntrez le montant à transférer depuis le compte épargne : ", currentUser.SoldeCompteEpargne);
+
+            if (resultatMontant.Abandon) return; // Quitte immédiatement si abandon
+            decimal montant = resultatMontant.Montant!.Value;
+
             if (choix == "1")
             {
-                montant = ObtenirMontant("\nEntrez le montant à transférer depuis le compte courant : ", currentUser.SoldeCompteCourant);
                 currentUser.SoldeCompteCourant -= montant;
                 currentUser.SoldeCompteEpargne += montant;
 
-                // Enregistrer les transactions pour le compte courant et le compte épargne
                 AddTransaction(currentUser.TransactionsCompteCourant, "Virement sortant (vers le compte épargne)", montant, currentUser.SoldeCompteCourant);
                 AddTransaction(currentUser.TransactionsCompteEpargne, "Virement entrant (depuis le compte courant)", montant, currentUser.SoldeCompteEpargne);
             }
-            else // choix == "2"
+            else
             {
-                montant = ObtenirMontant("\nEntrez le montant à transférer depuis le compte épargne : ", currentUser.SoldeCompteEpargne);
                 currentUser.SoldeCompteEpargne -= montant;
                 currentUser.SoldeCompteCourant += montant;
 
@@ -632,6 +816,164 @@ namespace ApplicationBancaire
             Console.WriteLine($"Nouveau solde du compte epargne : {currentUser.SoldeCompteEpargne}\n");
             AttendreToucheEntrer();
         }
+
+
+
+        private static void VirementExterne()
+        {
+            Console.Clear();
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("--- Virement Externe ---\n");
+            Console.ResetColor();
+
+            Console.WriteLine("Voulez-vous utiliser un bénéficiaire déjà enregistré ? (O/N)");
+            SaisieResultat resultatReponse = LireEntreeAvecOptionQuitter("Votre choix : ", "revenir au menu principal.");
+
+            if (resultatReponse.Abandon) return;
+
+            string reponse = resultatReponse.Valeur!;
+            Beneficiaire? beneficiaireSelectionne = null;
+
+            // Gestion des bénéficiaires existants
+            if (reponse.Trim().ToUpper() == "O")
+            {
+                if (currentUser.Beneficiaires.Count == 0)
+                {
+                    // Si aucun bénéficiaire enregistré, proposer directement d'enregistrer un nouveau bénéficiaire
+                    Console.WriteLine("Aucun bénéficiaire enregistré. Voulez-vous enregistrer un nouveau bénéficiaire ? (O/N)");
+                    SaisieResultat resultatEnregistrerNouveau = LireEntreeAvecOptionQuitter("Votre choix : ", "revenir au menu principal.");
+
+                    if (resultatEnregistrerNouveau.Abandon) return; // L'utilisateur a choisi de quitter
+
+                    string enregistrerNouveau = resultatEnregistrerNouveau.Valeur!;
+
+                    if (enregistrerNouveau.Trim().ToUpper() == "O")
+                    {
+                        beneficiaireSelectionne = EnregistrerNouveauBeneficiaire(); // Appel d'une méthode pour enregistrer un nouveau bénéficiaire
+                       
+                        beneficiaireSelectionne!.Iban = ReformaterIban(beneficiaireSelectionne.Iban);
+
+                        currentUser.Beneficiaires.Add(beneficiaireSelectionne);
+                        SauvegarderTitulairesEnJson();
+                    }
+                    else
+                    {
+                        AfficherErreur("Aucun bénéficiaire sélectionné. Opération annulée.");
+                        return;
+                    }
+                }
+                else
+                {
+                    do
+                    {
+                        Console.WriteLine("\nListe des bénéficiaires enregistrés :\n");
+                        for (int i = 0; i < currentUser.Beneficiaires.Count; i++)
+                        {
+                            Console.WriteLine($"[{i}] {currentUser.Beneficiaires[i]}");
+                        }
+
+                        SaisieResultat resultat = LireEntreeAvecOptionQuitter("Entrez l'indice du bénéficiaire à utiliser : ", "revenir au menu principal.");
+                        if (resultat.Abandon) return; // L'utilisateur a choisi de quitter
+
+                        if (int.TryParse(resultat.Valeur, out int index) && index >= 0 && index < currentUser.Beneficiaires.Count)
+                        {
+                            beneficiaireSelectionne = currentUser.Beneficiaires[index];
+                            break;
+                        }
+
+                        AfficherErreur("Indice invalide. Veuillez réessayer.");
+                    }
+                    while (true);
+                }
+            }
+
+            // Enregistrement d'un nouveau bénéficiaire si nécessaire
+            if (beneficiaireSelectionne == null)
+            {
+                Console.WriteLine("Voulez-vous enregistrer un nouveau bénéficiaire ? (O/N)");
+                SaisieResultat resReponseNouveau = LireEntreeAvecOptionQuitter("Votre choix : ", "revenir au menu principal.");
+                if (resReponseNouveau.Abandon) return; // L'utilisateur a choisi de quitter
+
+                string reponseNouveau = resReponseNouveau.Valeur!;
+
+                if (reponseNouveau.Trim().ToUpper() == "O")
+                {
+                    beneficiaireSelectionne = EnregistrerNouveauBeneficiaire(); // Appel d'une méthode pour enregistrer un nouveau bénéficiaire
+
+                    if (beneficiaireSelectionne != null)
+                    {
+                        // Ajouter le bénéficiaire à la liste du titulaire actuel
+                        beneficiaireSelectionne.Iban = ReformaterIban(beneficiaireSelectionne.Iban); // Formater l'IBAN avant l'enregistrement
+                                                
+                        currentUser.Beneficiaires.Add(beneficiaireSelectionne);
+                        SauvegarderTitulairesEnJson();
+
+                        Console.ForegroundColor = ConsoleColor.DarkGreen;
+                        Console.WriteLine("Nouveau bénéficiaire enregistré avec succès !");
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        AfficherErreur("Erreur lors de l'enregistrement du bénéficiaire.");
+                        return; // Sortir si l'enregistrement échoue
+                    }
+                }
+                else
+                {
+                    AfficherErreur("Aucun bénéficiaire sélectionné. Opération annulée.");
+                    return;
+                }
+            }
+
+            // Réalisation du virement
+            Console.WriteLine($"\nBénéficiaire sélectionné : {beneficiaireSelectionne}");
+
+            // Utilisation de MontantResultat pour gérer la saisie de montant
+            MontantResultat resultatMontant = ObtenirMontant("Entrez le montant à transférer : ", currentUser.SoldeCompteCourant);
+            if (resultatMontant.Abandon) return; // L'utilisateur a choisi de quitter
+            decimal montant = resultatMontant.Montant!.Value;
+
+            currentUser.SoldeCompteCourant -= montant;
+            currentUser.TransactionsCompteCourant.Add(new Transaction
+            {
+                Date = DateTime.Now,
+                Type = "Virement externe sortant",
+                Montant = montant,
+                NouveauSolde = currentUser.SoldeCompteCourant
+            });
+
+            if (beneficiaireSelectionne == null)
+            {
+                AfficherErreur("Aucun bénéficiaire valide n'a été sélectionné. Opération annulée.");
+                return;
+            }
+
+            Titulaire? benefClient = titulaires.FirstOrDefault(t =>
+     NormaliserIbanPourRecherche(t.Iban) == NormaliserIbanPourRecherche(beneficiaireSelectionne!.Iban));
+
+            if (benefClient != null)
+            {
+                benefClient.SoldeCompteCourant += montant;
+                benefClient.TransactionsCompteCourant.Add(new Transaction
+                {
+                    Date = DateTime.Now,
+                    Type = "Virement externe entrant",
+                    Montant = montant,
+                    NouveauSolde = benefClient.SoldeCompteCourant
+                });
+            }
+            else
+            {
+                Console.WriteLine("Attention : Le bénéficiaire n'est pas un client enregistré dans le système.");
+            }
+
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine("\nVirement externe réalisé avec succès !");
+            Console.ResetColor();
+            AttendreToucheEntrer();
+        }
+
         #endregion
 
         #region Quitter l'Application, sauvegarde Json et sauvegarde Incrémentielle (fichiers texte)
